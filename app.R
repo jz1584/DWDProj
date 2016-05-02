@@ -225,6 +225,7 @@ server <- function(input, output,session) {
             # Construct the fetching query`
             query <- sprintf("SELECT date 
                              FROM (select distinct date, company,locations,title from %s) as T
+                             where date >= '2016-04-30'
                              order by date", table2)
             #order by rand() limit 1000
             
@@ -242,7 +243,7 @@ server <- function(input, output,session) {
             # Construct the fetching query`
             query <- sprintf("select company,count(*) OpenJobs
                              FROM (select distinct date, company,locations,title from %s) as T
-                             where company!=''
+                             where company!='' and date >= '2016-04-30'
                              group by company
                              order by OpenJobs desc 
                              limit 10", table2)
@@ -263,6 +264,7 @@ server <- function(input, output,session) {
             # Construct the fetching query`
             query <- sprintf("SELECT title Top10InDemandJobs,count(*) OpenPositions
                        FROM (select distinct date, company,locations,title from %s) as T
+                       where date >= '2016-04-30'
                        group by title
                        order by OpenPositions desc", table2)
             # Submit the fetch query and disconnect
