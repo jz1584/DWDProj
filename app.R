@@ -27,7 +27,7 @@ ui <- dashboardPage(
                   menuItem("Indeed Job Posting Stats",tabName = "indeed",icon = icon('th')),
                   menuItem("Careerjet Job Posting Stats",tabName = "jet",icon = icon('th')),
                   menuItem('Where are the Jobs ?',tabName = 'mapping',icon = icon('th')),
-                  menuItem('Comparison',tabName = 'etc',icon=icon('th'))
+                  menuItem('Appendix',tabName = 'etc',icon=icon('th'))
             )
       ),
       
@@ -49,10 +49,12 @@ ui <- dashboardPage(
                   ),
                   tabItem('jet',
                           fluidRow(
-                                box(plotOutput("plotj1"),collapsible = TRUE,height = 500),
+                                box(tableOutput("plotj1"),collapsible = TRUE,height = 500,
+                                    title = '10 Recent Posted Jobs'
+                                    ),
                                 box(tableOutput('plotj3'),collapsible = TRUE,height = 500,title = 'Top 10 Companies that have the most Job openings'),
                                 box(plotOutput("plotj.state"),collapsible = TRUE,height = 500,
-                                    title = 'Top 10 States with the most Job openings---will fixed soon'),
+                                    title = 'Top 10 States with the most Job openings'),
                                 box(tableOutput('plotj4'),collapsible = TRUE,height = 500,
                                     title='Top 10 In-Demand Jobs'))
                   ),
@@ -63,7 +65,10 @@ ui <- dashboardPage(
                           )
                   ),
                   tabItem('etc',
-                          div(p('hello world in constrcution~~~'))    
+                          fluidRow(
+                                textOutput('appendix1'),
+                                textOutput('appendix2')
+                                )  
                   )
                   
             )
@@ -311,8 +316,27 @@ server <- function(input, output,session) {
             data
       }
       
+      loadj.recent <- function() { #slightly complicate one
+            # Connect to the database
+            db <- dbConnect(MySQL(), dbname = databaseName, host = options()$mysql$host, 
+                            port = options()$mysql$port, user = options()$mysql$user, 
+                            password = options()$mysql$password)
+            # Construct the fetching query`
+            query <- sprintf(
+                             "SELECT company, title, locations
+                             from  %s
+                             order by date desc
+                              limit 10", table2)
+            
+            # Submit the fetch query and disconnect
+            data <- dbGetQuery(db, query)
+            dbDisconnect(db)
+            data$company<-factor(data$company)
+            data
+      }
       
-      
+
+
       loadData.Jstate <- function() {
             # Connect to the database
             db <- dbConnect(MySQL(), dbname = databaseName, host = options()$mysql$host, 
@@ -323,7 +347,7 @@ server <- function(input, output,session) {
                              FROM (select distinct company,locations jobLocation,title from %s) as T
                              group by JobLocation
                              order by JobPostings desc
-                             limit 10", table2)
+                             limit 1000000", table2)
             # Submit the fetch query and disconnect
             data <- dbGetQuery(db, query)
             dbDisconnect(db)
@@ -332,6 +356,11 @@ server <- function(input, output,session) {
       dataFresh.Jstate<-reactive({
             invalidateLater(1800000,session)#12 hrs
             jstate<-loadData.Jstate()
+            jstate$JobLocation<-toupper(jstate$JobLocation)
+            jstate<-aggregate(x=jstate$JobPostings,by=list(jstate$JobLocation),FUN=sum)
+            names(jstate)<-c("JobLocation","JobPostings")
+            jstate<-jstate[order(jstate$JobPostings,decreasing = TRUE),]
+            jstate<-jstate[1:10,]#top 10 only
             
       })
       
@@ -359,6 +388,12 @@ server <- function(input, output,session) {
             a$OpenPositions<-as.integer(a$OpenPositions)
             a
             
+      })
+      
+      dataFresh.jet.recent<-reactive({
+            #refresh data
+            invalidateLater(1800000,session)
+            a<-loadj.recent()
       })
       
       output$plotj.state <- renderPlot({
@@ -391,7 +426,9 @@ server <- function(input, output,session) {
             
       })
       
-      
+      output$plotj1<-renderTable({
+            recent<-dataFresh.jet.recent()
+      })
       
       ############################################  Update time session:
       loadData.time <- function() {
@@ -434,7 +471,14 @@ server <- function(input, output,session) {
             reactive.time<-paste('Current Time:',dataFresh.CurrentTime())
       })
       
+      output$appendix1<-renderText({
+            paste('Team Members: Rohit Shivaji Bhangale, Jianming Zhou, Tianpei Liu, Jonathan Borch')
+      })
+      output$appendix2<-renderText({
+            paste('Source Code saved here: https://github.com/jz1584/DWDProj/blob/master/app.R')
+      })
       
+                  
       
       ###########################################################################################################
       
