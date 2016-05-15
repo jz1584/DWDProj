@@ -220,7 +220,8 @@ server <- function(input, output,session) {
             a<-dataFresh()#
             qplot(as.Date(a$date),binwidth=1,xlab = 'Date',ylab='Number of Jobs Opening',
                   main = 'Updates every 12 hours')+
-                  theme(axis.text=element_text(size=14,face = 'bold'),axis.title=element_text(size=14,face = 'bold'))
+                  theme(axis.text=element_text(size=14,face = 'bold'),axis.title=element_text(size=14,face = 'bold'),
+                        axis.text.x = element_text(angle = 45, hjust = 1))
             
       })
       
@@ -309,7 +310,7 @@ server <- function(input, output,session) {
             query <- sprintf("select title Top10InDemandJobs,count(*) OpenPositions
                              FROM (select distinct company,locations,title from %s) as T
                              group by title
-                             order by OpenPositions desc", table2)
+                             order by OpenPositions desc limit 10", table2)
             # Submit the fetch query and disconnect
             data <- dbGetQuery(db, query)
             dbDisconnect(db)
@@ -384,8 +385,13 @@ server <- function(input, output,session) {
             #refresh data
             invalidateLater(1800000,session)
             a<-loadjet3()
+            a$Top10InDemandJobs<-gsub("\x96", "", a$Top10InDemandJobs)
+            a$Top10InDemandJobs<-gsub("\x92", "", a$Top10InDemandJobs)
+            a$Top10InDemandJobs<-gsub('\xfc\xbe\x8c\xa3\xa4\xbc',"",a$Top10InDemandJobs)
+            a<-a[1:10,] #ensure ~~
             a$Top10InDemandJobs<-substr(stri_trim(a$Top10InDemandJobs),1,25)
             a$OpenPositions<-as.integer(a$OpenPositions)
+            a$Top10InDemandJobs<-stri_enc_toutf8(a$Top10InDemandJobs)
             a
             
       })
